@@ -1,0 +1,47 @@
+trigger:
+ branches:
+   include: [dev]
+
+stages:
+  - stage: build
+    jobs:
+    - job: build
+      steps:
+        - task: DownloadSecureFile@1
+          name: keysEnv
+          inputs:
+            secureFile: 'keys.env'
+            retryCount: '2'
+        - script: cp $(keysEnv.secureFilePath) ./keys.env
+        - task: FlutterInstall@0
+        - task: FlutterBuild@0
+          inputs:
+            target: 'apk'
+            debugMode: true
+
+        - publish: './build/app/outputs/apk/debug/app-debug.apk'
+          artifact: test
+          name: test
+
+  - stage: upload
+    jobs:
+    - deployment: DeployBackend
+      displayName: flutter android app
+      environment: 
+        name: 'DEVELOP Student server'
+        resourceType: VirtualMachine
+      strategy:
+        rolling:
+          deploy:
+            steps:
+            - task: DownloadBuildArtifacts@1
+              inputs:
+                buildType: 'current'
+                downloadType: 'single'
+                artifactName: 'test'
+            - task: Bash@3
+              inputs:
+                targetType: 'inline'
+                script: |
+                  /bin/cp -rf $(System.ArtifactsDirectory)/app-debug.apk /home/ubuntu/resources/na_stiahnutie/app-debug.apk
+

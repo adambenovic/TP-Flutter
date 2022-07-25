@@ -1,0 +1,4 @@
+enum DocType {
+  id,
+  passport,
+}
